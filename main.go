@@ -6,7 +6,7 @@ import (
 )
 
 type RequestBody struct {
-	Task string `json:"task"`
+	Task string `json:"Hellow"`
 }
 
 type Response struct {
@@ -22,7 +22,7 @@ func GetHandler(c echo.Context) error {
 
 func PostHandler(c echo.Context) error {
 	var tasks RequestBody
-	if err := c.Bind(&task); err != nil {
+	if err := c.Bind(&tasks); err != nil {
 		return c.JSON(http.StatusBadRequest, Response{
 			Status:      "failed",
 			RequestBody: " Don't Body",
@@ -37,7 +37,7 @@ func PostHandler(c echo.Context) error {
 
 func main() {
 	e := echo.New()
-	e.GET("/task", GetHandler)
-	e.POST("/task", PostHandler)
+	e.GET("/get", GetHandler)
+	e.POST("/post", PostHandler)
 	e.Logger.Fatal(e.Start(":8080"))
 }
