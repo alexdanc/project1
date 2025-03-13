@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"gorm.io/gorm"
 	"net/http"
 )
 
@@ -39,13 +40,61 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func PutHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	var task Task
+	result := DB.First(&task, id)
+	if result.Error != nil {
+
+		if result.Error == gorm.ErrRecordNotFound {
+			http.Error(w, "Задача не найдена", http.StatusNotFound)
+		} else {
+			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+	var updatedTask Task
+	if err := json.NewDecoder(r.Body).Decode(&updatedTask); err != nil {
+		http.Error(w, "Некорректные данные", http.StatusBadRequest)
+		return
+	}
+	task.Task = updatedTask.Task
+	task.IsDone = updatedTask.IsDone
+	if err := DB.Save(&task).Error; err != nil {
+		http.Error(w, "Ошибка при обновлении задачи", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
+
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	var task Task
+	result := DB.First(&task, id)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+		}
+		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := DB.Delete(&task).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func main() {
 	InitDB()
 
 	DB.AutoMigrate(&Task{})
 
 	router := mux.NewRouter()
-	router.HandleFunc("/task/get", GetHandler).Methods("GET")
-	router.HandleFunc("/task/post", PostHandler).Methods("POST")
+	router.HandleFunc("/api/tasks", GetHandler).Methods("GET")
+	router.HandleFunc("/api/tasks", PostHandler).Methods("POST")
+	router.HandleFunc("/api/tasks/{id}", PutHandler).Methods("PUT")
+	router.HandleFunc("/api/tasks/{id}", DeleteHandler).Methods("DELETE")
 	http.ListenAndServe(":8080", router)
 }
